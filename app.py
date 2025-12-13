@@ -15,13 +15,11 @@ st.set_page_config(
 # ==============================
 # INIZIALIZZAZIONE DELLO STATO (PULIZIA CAMPI)
 # ==============================
-# Reset di campi come "Nome Cliente" che Streamlit tende a memorizzare al ricaricamento
 if 'cliente_sb' not in st.session_state or st.session_state.cliente_sb is None:
     st.session_state.cliente_sb = "" 
-# Gli altri campi numerici si resettano grazie all'argomento 'value' nel widget
 
 # ==============================
-# STILE GENERALE (CSS) - Correzione Mobile
+# STILE GENERALE (CSS) - Correzione Mobile & Sidebar
 # ==============================
 st.markdown("""
 <style>
@@ -52,21 +50,28 @@ button[title="Open sidebar"], button[title="Close sidebar"] {
 
 
 /* ---------------------------------- */
-/* STILE SIDEBAR SCURO */
+/* STILE SIDEBAR SCURO (Correzione Testo Mobile) */
 /* ---------------------------------- */
 section[data-testid="stSidebar"] {
     background-color: #1c1f26; /* Sfondo Sidebar scuro */
     padding: 10px;
-    color: white; 
+    color: #f0f2f6 !important; /* Colore base del testo nella sidebar */
 }
 
-/* Titoli e Intestazioni nella Sidebar */
-.st-emotion-cache-1wv9vyr, 
-.st-emotion-cache-163w365 h3, 
-.st-emotion-cache-1wv9vyr h2,
-.st-emotion-cache-1wv9vyr label,
-.st-emotion-cache-1wv9vyr .st-emotion-cache-10trblm {
-    color: #f0f2f6 !important; 
+/* Targeting dei titoli, sottotitoli, etichette e testo di base in modo aggressivo (copre anche il mobile) */
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] div {
+    color: #f0f2f6 !important; /* Forza il testo a essere chiaro */
+}
+
+/* Targeting specifico per il testo all'interno dei campi di input */
+section[data-testid="stSidebar"] input[type="text"],
+section[data-testid="stSidebar"] input[type="number"] {
+    color: #ffffff !important; /* Testo digitato */
+    background-color: #3e4451 !important; /* Sfondo scuro per i campi input */
 }
 
 /* Sidebar separatore */
@@ -134,7 +139,7 @@ footer {
 
 
 # ==============================
-# COSTANTI & FUNZIONI (Tutte le tue costanti)
+# COSTANTI & FUNZIONI
 # ==============================
 QUOTA_FISSA_LUCE = 22.80 / 12
 QUOTA_POTENZA = 2.10
@@ -170,6 +175,62 @@ def aliquota_iva_gas(smc_annuo):
 
 def format_currency(value):
     return f"€ {value:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
+
+# ==============================
+# FUNZIONI DI VISUALIZZAZIONE
+# ==============================
+def create_price_chart(prices, avg_price, mesi_idx, titolo, nome_indice):
+    # La lista prices ha indice 0 come placeholder, quindi gli indici reali vanno da 1 a 12
+    df_prices = pd.DataFrame({
+        'Mese': MESI,
+        nome_indice: prices[1:] 
+    })
+    
+    # Prezzo Medio del periodo selezionato per la linea di riferimento
+    df_avg = pd.DataFrame({
+        'Mese': [MESI[m - 1] for m in mesi_idx],
+        'Prezzo Medio Contratto': [avg_price] * len(mesi_idx)
+    })
+
+    # Grafico Linea PUN/PSV annuale
+    fig = px.line(
+        df_prices, 
+        x='Mese', 
+        y=nome_indice, 
+        title=titolo,
+        markers=True,
+        color_discrete_sequence=['#00BFFF']
+    )
+    
+    # Aggiunge la linea del prezzo medio del periodo selezionato
+    fig.add_trace(
+        px.line(
+            df_avg, 
+            x='Mese', 
+            y='Prezzo Medio Contratto', 
+            line_dash='dash', 
+            color_discrete_sequence=['#FFD700']
+        ).data[0]
+    )
+    
+    # Rinomina le tracce per la legenda
+    fig.data[0].name = nome_indice
+    fig.data[1].name = 'Media Periodo Scelto'
+
+    fig.update_layout(
+        showlegend=True, 
+        margin=dict(t=30, b=0, l=0, r=0), 
+        legend_title_text=''
+    )
+    
+    # Evidenzia i mesi utilizzati per il calcolo
+    for i in mesi_idx:
+        fig.add_vrect(
+            x0=MESI[i-1], x1=MESI[i-1],
+            fillcolor="#00BFFF", opacity=0.1, line_width=0
+        )
+
+    return fig
 
 # ==============================
 # HEADER - Spostato nel Corpo Principale
@@ -283,10 +344,16 @@ if st.session_state.get("calc_hidden"):
         num_mesi = len(mesi_idx)
         
         materia, sp_rete, quota_pot, oneri, comm_tot, accise_iva, accise_luce, iva_luce, accise_gas, iva_gas = 0,0,0,0,0,0,0,0,0,0
+        pun_medio_base = 0.0
+        psv_avg = 0.0
+        prezzo_medio_calcolato = 0.0
         
         if tipo=="Luce":
             SPREAD, COMM = OFFERTE_LUCE[offerta] 
-            prezzo_medio = sum([PUN[m] for m in mesi_idx])/num_mesi + SPREAD + DISPACCIAMENTO + ASOS
+            pun_medio_base = sum([PUN[m] for m in mesi_idx])/num_mesi
+            prezzo_medio = pun_medio_base + SPREAD + DISPACCIAMENTO + ASOS
+            prezzo_medio_calcolato = prezzo_medio # Salvo il prezzo finale della materia prima
+            
             materia = kwh * prezzo_medio
             sp_rete = kwh * 0.0445
             quota_pot = kw * QUOTA_POTENZA * num_mesi
@@ -310,7 +377,9 @@ if st.session_state.get("calc_hidden"):
         else: # Tipo Gas
             SPREAD, COMM = OFFERTE_GAS[offerta] 
             psv_avg = sum([PSV[m] for m in mesi_idx])/num_mesi
-            materia = smc*(psv_avg+SPREAD+QUOTA_CONSUMO_GAS)
+            prezzo_medio_calcolato = psv_avg + SPREAD + QUOTA_CONSUMO_GAS # Salvo il prezzo finale della materia prima
+            
+            materia = smc*(prezzo_medio_calcolato)
             sp_rete = QUOTA_VAR_DIST_GAS*smc + QUOTA_DIST_GAS * num_mesi
             oneri = ONERI_SISTEMA_GAS*num_mesi + (0.07*smc)+(0.12*smc)
             comm_tot = COMM*num_mesi
@@ -369,6 +438,49 @@ if st.session_state.get("calc_hidden"):
         )
 
         st.markdown("---")
+        
+        # --- VISUALIZZAZIONE ANDAMENTO PUN/PSV AGGIUNTA ---
+        st.markdown("## 📈 Andamento Prezzi all'Ingrosso")
+        col_price1, col_price2 = st.columns([2, 1])
+
+        with col_price1:
+            if tipo == "Luce":
+                fig_prices = create_price_chart(PUN, pun_medio_base, mesi_idx, 
+                                                "Andamento PUN (€/kWh) - Indice Prezzo all'Ingrosso", 
+                                                "PUN (€/kWh)")
+                st.plotly_chart(fig_prices, use_container_width=True)
+            else:
+                fig_prices = create_price_chart(PSV, psv_avg, mesi_idx, 
+                                                "Andamento PSV (€/Smc) - Indice Prezzo all'Ingrosso", 
+                                                "PSV (€/Smc)")
+                st.plotly_chart(fig_prices, use_container_width=True)
+                
+            
+
+        with col_price2:
+            st.markdown("#### Riepilogo Prezzi Base")
+            if tipo == "Luce":
+                st.metric(
+                    label="PUN Medio del Periodo", 
+                    value=f"{pun_medio_base:.4f} €/kWh"
+                )
+                st.metric(
+                    label="Costo Materia Prima Finale",
+                    value=f"{prezzo_medio_calcolato:.4f} €/kWh",
+                    delta="Include Spread, Dispacciamento, ASOS e perdite di rete."
+                )
+            else:
+                st.metric(
+                    label="PSV Medio del Periodo", 
+                    value=f"{psv_avg:.4f} €/Smc"
+                )
+                st.metric(
+                    label="Costo Materia Prima Finale",
+                    value=f"{prezzo_medio_calcolato:.4f} €/Smc",
+                    delta="Include Spread e Oneri Commerciali Variabili."
+                )
+                
+        st.markdown("---")
 
         # --- CONFRONTO GRAFICO (Barre) ---
         col_g1, col_g2 = st.columns([2, 3])
@@ -379,8 +491,7 @@ if st.session_state.get("calc_hidden"):
                 'Scenario': ['Fattura Attuale', f'Offerta {offerta}'],
                 'Costo (€)': [fatt_attuale, totale_simulato]
             })
-            
-            # Grafico a barre di confronto
+
             fig_bar = px.bar(
                 df_comparison, 
                 x='Scenario', 
@@ -412,7 +523,6 @@ if st.session_state.get("calc_hidden"):
             df_breakdown = pd.DataFrame(voci_breakdown, columns=['Voce di Costo', 'Importo'])
             df_breakdown['Importo'] = df_breakdown['Importo'].abs() 
 
-            # Grafico a ciambella della composizione dei costi
             fig_pie = px.pie(
                 df_breakdown, 
                 values='Importo', 
@@ -444,7 +554,6 @@ if st.session_state.get("calc_hidden"):
             
             df_tabella = pd.DataFrame(righe_tabella)
             
-            # Visualizza la tabella senza l'indice numerico predefinito
             st.table(df_tabella.set_index("Voce")) 
             
             st.markdown(f"**Totale Bolletta Stimata: {format_currency(totale_simulato)}**")
