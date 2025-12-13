@@ -477,14 +477,14 @@ if st.session_state.get("calc_hidden"):
                                                 "Andamento PUN (€/kWh) - Indice Prezzo all'Ingrosso", 
                                                 "PUN (€/kWh)")
                 st.plotly_chart(fig_prices, use_container_width=True)
+                
             else:
                 fig_prices = create_price_chart(PSV, psv_avg, mesi_idx, 
                                                 "Andamento PSV (€/Smc) - Indice Prezzo all'Ingrosso", 
                                                 "PSV (€/Smc)")
                 st.plotly_chart(fig_prices, use_container_width=True)
                 
-            # 
-
+                
         with col_price2:
             st.markdown("#### Riepilogo Prezzi Base")
             if tipo == "Luce":
@@ -591,7 +591,7 @@ if st.session_state.get("calc_hidden"):
         st.error(f"⚠️ Errore nel calcolo. Controlla i dati inseriti o la logica interna: {e}")
 
 else:
-    # --- Pulsante che apre la sidebar (Trick CSS/JS) ---
+    # Messaggio iniziale
     st.markdown("## Benvenuto nel Simulatore Energia")
     st.info("Clicca il pulsante qui sotto per accedere al pannello di controllo e iniziare la simulazione.")
     
@@ -611,7 +611,6 @@ else:
     with col_c2:
         if st.button("▶️ Inizia la Simulazione", key="start_app_button", use_container_width=True):
             # 3. Al clic, inietta lo script JavaScript per forzare l'apertura della sidebar.
-            # (Usiamo st.html per iniettare lo script, disponibile nelle versioni recenti di Streamlit)
             st.html(js_code)
             
             # 4. Mostra un messaggio di attesa/istruzione
