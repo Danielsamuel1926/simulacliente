@@ -15,23 +15,32 @@ st.set_page_config(
 # ==============================
 # INIZIALIZZAZIONE DELLO STATO
 # ==============================
-# Stato per mostrare il form di input
 if 'app_started' not in st.session_state:
     st.session_state.app_started = False
-# Stato per mostrare i risultati
 if 'calc_hidden' not in st.session_state:
     st.session_state.calc_hidden = False
-# Pulizia campi
 if 'cliente_main' not in st.session_state:
     st.session_state.cliente_main = "" 
+    
+# Inizializza la variabile 'tipo' per evitare l'errore al primo avvio
+if 'tipo_main' not in st.session_state:
+    st.session_state.tipo_main = "Luce"
+
 
 # Funzione per passare da input a risultati
 def start_calculation():
     """Funzione callback per avviare il calcolo."""
     st.session_state.calc_hidden = True
 
+# Funzione di utilità per salvare lo stato dell'offerta
+def save_menu_state(menu_selection):
+    """Salva la selezione del menu Luce/Gas nello stato."""
+    st.session_state.tipo_main = menu_selection
+
+
 # ==============================
 # STILE GENERALE (CSS)
+# (Omesso per brevità, ma identico a prima)
 # ==============================
 st.markdown("""
 <style>
@@ -39,8 +48,6 @@ st.markdown("""
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-
-/* HEADER - Mantenuto e spostato */
 .header-container {
     background: linear-gradient(90deg, #0b0c12, #253073);
     padding: 20px;
@@ -48,37 +55,26 @@ body {
     border-radius: 12px;
     margin-bottom: 20px;
 }
-
-/* Nasconde completamente la sidebar (non necessaria in questo layout) */
 section[data-testid="stSidebar"] {
     visibility: hidden;
 }
-
-/* ---------------------------------- */
-/* STILE BOTTONE (Azzurro) */
-/* ---------------------------------- */
-
 div.stButton > button {
-    background-color: #00BFFF; /* Azzurro luminoso (Colore primario) */
-    color: white !important; /* Testo bianco */
+    background-color: #00BFFF; 
+    color: white !important; 
     font-weight: bold;
     border: none;
     border-radius: 8px;
     padding: 10px 20px;
     transition: background-color 0.2s; 
 }
-
 div.stButton > button:active {
     background-color: #3e4451 !important; 
     color: #00BFFF !important; 
 }
-
 div.stButton > button:hover {
     background-color: #009ACD; 
     color: white !important;
 }
-
-/* Stili per il contenitore del form di input */
 .form-container {
     background-color: #1c1f26; 
     padding: 25px;
@@ -86,15 +82,11 @@ div.stButton > button:hover {
     border: 1px solid #3e4451;
     margin-bottom: 30px;
 }
-
-/* Stile per i sottotitoli interni al form */
 .form-container h3 {
     color: #00BFFF;
     border-bottom: 2px solid #3e4451;
     padding-bottom: 5px;
 }
-
-/* Stili per le metriche (rimanenti come prima) */
 [data-testid="stMetric"] {
     background-color: #2c3038; 
     padding: 15px;
@@ -102,7 +94,6 @@ div.stButton > button:hover {
     border-left: 5px solid #00BFFF; 
     box-shadow: 0 4px 8px rgba(0,0,0,0.2); 
 }
-/* ... (altri stili come prima) ... */
 </style>
 """, unsafe_allow_html=True)
 
@@ -142,7 +133,6 @@ def format_currency(value):
     return f"€ {value:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
 
 def create_price_chart(prices, avg_price, mesi_idx, titolo, nome_indice):
-    # ... (Funzione di creazione grafico identica) ...
     df_prices = pd.DataFrame({
         'Mese': MESI,
         nome_indice: prices[1:] 
@@ -218,7 +208,7 @@ if not st.session_state.app_started:
     with col_c2:
         if st.button("▶️ Inizia Simulazione", key="start_app_button", use_container_width=True):
             st.session_state.app_started = True
-            st.rerun() # Forza il refresh per mostrare il form
+            st.rerun()
             
 elif not st.session_state.calc_hidden:
     # --- FASE 2: Form di Input Dati ---
@@ -231,12 +221,15 @@ elif not st.session_state.calc_hidden:
 
         col_t1, col_t2 = st.columns([1, 3])
         with col_t1:
+             # NOTA CHIAVE: Uso della funzione 'on_change' per salvare subito lo stato
              tipo = option_menu(
                 menu_title=None,
                 options=["Luce", "Gas"],
                 icons=["bolt", "fire"],
-                default_index=0,
+                default_index=["Luce", "Gas"].index(st.session_state.tipo_main), # Mantiene lo stato
                 orientation="horizontal",
+                on_change=lambda: save_menu_state(st.session_state.menu_tipo),
+                key="menu_tipo", # Chiave per catturare la selezione
                 styles={
                     "container": {"padding": "5!important", "background-color": "#1c1f26", "border-radius": "5px"},
                     "nav-link": {"font-size": "14px", "color": "#f0f2f6", "padding": "5px"},
@@ -244,8 +237,11 @@ elif not st.session_state.calc_hidden:
                 }
             )
         
+        # Recupera il tipo di energia (Luce o Gas) dalla session_state aggiornata
+        tipo = st.session_state.tipo_main
+        offerta = "F&F" 
+        
         with col_t2:
-            offerta = "F&F" 
             st.markdown(f"""
             <div style="background-color: #3e4451; padding: 5px; border-radius: 5px; text-align: center; margin-top: 10px; margin-left: 10px;">
                 <span style="font-weight: bold; color: #00BFFF;">Offerta Fissa Selezionata: {offerta}</span>
@@ -257,6 +253,7 @@ elif not st.session_state.calc_hidden:
         st.markdown("### Dati Cliente e Periodo")
         col_c1, col_c2, col_c3, col_c4 = st.columns(4)
         
+        # I KEY qui salvano automaticamente i valori nello stato della sessione
         with col_c1:
             cliente = st.text_input("Nome Cliente", key="cliente_main", value=st.session_state.cliente_main)
         with col_c2:
@@ -279,6 +276,9 @@ elif not st.session_state.calc_hidden:
                 kw = st.selectbox("Potenza impegnata (kW)", [1,1.5,2,2.5,3,4.5,5,5.5,6], key="kw_main")
             smc = 0
             smc_annuo = 0
+            # Azzera le chiavi Gas se si passa a Luce per coerenza
+            if 'smc_main' in st.session_state: del st.session_state.smc_main
+            if 'smc_annuo_main' in st.session_state: del st.session_state.smc_annuo_main
         else:
             with col_d1:
                 smc = st.number_input("Consumo Gas (m³)", min_value=0.0, value=150.0, key="smc_main")
@@ -286,6 +286,9 @@ elif not st.session_state.calc_hidden:
                 smc_annuo = st.number_input("Consumo annuo Gas (m³)", min_value=0.0, value=1800.0, key="smc_annuo_main")
             kwh = 0
             kw = 3 
+            # Azzera le chiavi Luce se si passa a Gas per coerenza
+            if 'kwh_main' in st.session_state: del st.session_state.kwh_main
+            if 'kw_main' in st.session_state: del st.session_state.kw_main
         
         st.markdown("---")
         
@@ -319,30 +322,34 @@ elif not st.session_state.calc_hidden:
 else:
     # --- FASE 3: Dashboard dei Risultati ---
     
-    # Recupera i dati dal session_state per il calcolo
+    # Recupera i dati dallo stato della sessione - QUESTA PARTE E' ORA SICURA
     tipo = st.session_state.tipo_main
-    offerta = "F&F" # Fissa
+    offerta = "F&F"
     cliente = st.session_state.cliente_main
     periodo = st.session_state.periodo_main
     mese1 = st.session_state.mese1_main
-    mese2 = st.session_state.get('mese2_main')
-    kwh = st.session_state.get('kwh_main', 0.0)
+    mese2 = st.session_state.get('mese2_main') # get() per i campi opzionali
+    
+    # Usa .get() per i campi che possono non esistere a seconda del tipo (Luce/Gas)
+    kwh = st.session_state.get('kwh_main', 0.0) 
     kw = st.session_state.get('kw_main', 3)
     smc = st.session_state.get('smc_main', 0.0)
     smc_annuo = st.session_state.get('smc_annuo_main', 0.0)
+    
     fatt_attuale = st.session_state.fatt_attuale_main
     bonus = st.session_state.bonus_main
     ricalcoli = st.session_state.ricalcoli_main
     altre = st.session_state.altre_main
     canone_tv = st.session_state.canone_tv_main
 
+
+    # 1. LOGICA DI CALCOLO (Identica a prima)
     try:
-        # 1. LOGICA DI CALCOLO (Identica a prima)
         mesi_list = [mese1] if periodo=="Mensile" else [mese1, mese2]
         mesi_idx = [MESI.index(m)+1 for m in mesi_list]
         num_mesi = len(mesi_idx)
         
-        materia, sp_rete, quota_pot, oneri, comm_tot, accise_luce, iva_luce, accise_gas, iva_gas = 0,0,0,0,0,0,0,0,0
+        materia, sp_rete, quota_pot, oneri, comm_tot = 0,0,0,0,0
         pun_medio_base = 0.0
         psv_avg = 0.0
         prezzo_medio_calcolato = 0.0
@@ -407,6 +414,8 @@ else:
         # 3. VISUALIZZAZIONE RISULTATI (Dashboard)
         st.header(f"2. Risultati Simulazione Offerta {offerta} ({num_mesi} Mesi)")
         st.markdown("---")
+        
+        # 
 
         col_m1, col_m2, col_m3 = st.columns(3)
         risparmio_reale = fatt_attuale - totale_simulato
@@ -477,6 +486,7 @@ else:
         # Breakdown
         with col_g2:
             st.markdown(f"#### 🍩 Composizione del Costo Simulato ({offerta})")
+            # 
             voci_breakdown = [(k, v) for k, v in dati_simulati.items()]
             if canone_tv > 0: voci_breakdown.append(("Canone TV", canone_tv))
             if bonus > 0: voci_breakdown.append(("Bonus Sociale", bonus))
@@ -516,5 +526,4 @@ else:
     with col_r2:
         if st.button("⬅️ Torna alla Configurazione", key="reset_button", use_container_width=True):
             st.session_state.calc_hidden = False
-            st.rerun() # Forza il refresh per tornare alla fase 2 (Input)
-
+            st.rerun()
