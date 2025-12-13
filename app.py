@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from streamlit_option_menu import option_menu
 import plotly.express as px
-import plotly.graph_objects as go # Import necessario per correggere l'errore del dash
+import plotly.graph_objects as go 
 
 # ==============================
 # CONFIGURAZIONE PAGINA
@@ -20,7 +20,7 @@ MESI = ["GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO",
         "LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"]
 
 # ==============================
-# INIZIALIZZAZIONE DELLO STATO (Correzione Completa degli AttributeError)
+# INIZIALIZZAZIONE DELLO STATO 
 # ==============================
 if 'app_started' not in st.session_state:
     st.session_state.app_started = False
@@ -247,7 +247,7 @@ if not st.session_state.app_started:
 elif not st.session_state.calc_hidden:
     # --- FASE 2: Form di Input Dati (Correzione UI) ---
     st.markdown("## 1. 🛠️ Configurazione Dati")
-    st.markdown("---")
+    # RIMOSSA st.markdown("---") per eliminare la barra orizzontale sotto il titolo
     
     # Inizio del blocco form-container (stile scuro)
     st.markdown('<div class="form-container">', unsafe_allow_html=True)
@@ -388,6 +388,7 @@ else:
         if periodo=="Bimestrale" and mese2 is not None:
              mesi_list = [mese1, mese2]
         elif periodo=="Bimestrale" and mese2 is None:
+             # Questo dovrebbe essere gestito nel form, ma serve come fallback
              raise ValueError("Seleziona il secondo mese per il periodo bimestrale.")
 
         mesi_idx = [MESI.index(m)+1 for m in mesi_list]
