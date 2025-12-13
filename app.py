@@ -91,7 +91,7 @@ footer {
 
 /* 1. Stato Normale e Hover: Bottone Azione (Azzurro/Bianco) */
 div.stButton > button {
-    background-color: #00BFFF; /* Azzurro luminoso (Colore primario) */
+    background-color: #262573; /* Blu Luminoso (Colore primario) */
     color: white !important; /* Testo bianco */
     font-weight: bold;
     border: none;
@@ -593,6 +593,7 @@ if st.session_state.get("calc_hidden"):
 else:
     # Messaggio iniziale
     st.info(f"Per iniziare la simulazione dell'offerta {offerta}, inserisci i parametri richiesti nel pannello di controllo laterale (Sidebar) e clicca 'Avvia Simulazione'.")
+
 
 
 
