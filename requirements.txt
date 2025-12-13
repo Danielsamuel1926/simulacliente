@@ -1,3 +1,5 @@
-streamlit>=1.25.0
+streamlit
 pandas
+plotly
 streamlit-option-menu
+
