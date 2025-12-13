@@ -15,8 +15,12 @@ st.set_page_config(
 # ==============================
 # INIZIALIZZAZIONE DELLO STATO (PULIZIA CAMPI)
 # ==============================
-if 'cliente_sb' not in st.session_state or st.session_state.cliente_sb is None:
+# Inizializzazione sicura dello stato
+if 'cliente_sb' not in st.session_state:
     st.session_state.cliente_sb = "" 
+    
+# 'calc_hidden' è True/False in base al clic del bottone 'Avvia Simulazione' (key="calc_hidden")
+# Non è necessario inizializzarlo esplicitamente se usato solo con st.session_state.get()
 
 # ==============================
 # STILE GENERALE (CSS) - Correzione Mobile & Sidebar
@@ -202,6 +206,7 @@ def aliquota_iva_gas(smc_annuo):
     return 0.10 if smc_annuo <= 480 else 0.22
 
 def format_currency(value):
+    # Formattazione per valuta italiana (es: 1.234,56 €)
     return f"€ {value:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
 
 # ==============================
@@ -355,6 +360,7 @@ with st.sidebar:
 
     st.markdown("---")
     
+    # Il pulsante imposta st.session_state.calc_hidden su True quando viene cliccato
     st.button("🚀 Avvia Simulazione", key="calc_hidden")
 
 
@@ -534,7 +540,7 @@ if st.session_state.get("calc_hidden"):
             fig_bar.update_layout(xaxis_title="", yaxis_title="Costo (€)", showlegend=False, margin=dict(t=30, b=0, l=0, r=0))
             fig_bar.update_traces(texttemplate='€%{text:.0f}', textposition='outside')
             st.plotly_chart(fig_bar, use_container_width=True)
-            # 
+            
 
 
         # --- BREAKDOWN DEI COSTI (GRAFICO A CIAMBELLA) ---
@@ -563,7 +569,7 @@ if st.session_state.get("calc_hidden"):
             fig_pie.update_layout(showlegend=False, uniformtext_minsize=12, uniformtext_mode='hide', margin=dict(t=30, b=0, l=0, r=0))
             
             st.plotly_chart(fig_pie, use_container_width=True)
-            # 
+            
 
         st.markdown("---")
 
@@ -591,11 +597,11 @@ if st.session_state.get("calc_hidden"):
         st.error(f"⚠️ Errore nel calcolo. Controlla i dati inseriti o la logica interna: {e}")
 
 else:
-    # Messaggio iniziale
+    # Mostra la schermata iniziale con il pulsante
     st.markdown("## Benvenuto nel Simulatore Energia")
     st.info("Clicca il pulsante qui sotto per accedere al pannello di controllo e iniziare la simulazione.")
     
-    # 1. Definisci il codice JavaScript per simulare il clic sul pulsante nativo della sidebar
+    # Codice JavaScript per simulare il clic sul pulsante nativo della sidebar
     js_code = """
         <script>
         // Cerca il pulsante "Open sidebar" e simula un click
@@ -606,16 +612,13 @@ else:
         </script>
         """
 
-    # 2. Mostra il pulsante "Inizia la Simulazione" nel corpo centrale.
+    # Mostra il pulsante "Inizia la Simulazione" nel corpo centrale.
     col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
     with col_c2:
         if st.button("▶️ Inizia la Simulazione", key="start_app_button", use_container_width=True):
-            # 3. Al clic, inietta lo script JavaScript per forzare l'apertura della sidebar.
+            # Al clic, inietta lo script JavaScript per forzare l'apertura della sidebar.
             st.html(js_code)
             
-            # 4. Mostra un messaggio di attesa/istruzione
+            # Mostra un messaggio di attesa/istruzione
             st.toast("Apertura del pannello di controllo in corso...", icon='🛠️')
             st.success("Utilizza la **Sidebar** (a sinistra) per inserire i dati di consumo e avviare il calcolo.")
-
-    # 5. Forziamo lo stato calc_hidden a None per nascondere il dashboard finché non vengono inseriti i dati
-    st.session_state.calc_hidden = None
