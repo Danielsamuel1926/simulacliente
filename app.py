@@ -620,9 +620,3 @@ else:
 
     # 5. Forziamo lo stato calc_hidden a None per nascondere il dashboard finché non vengono inseriti i dati
     st.session_state.calc_hidden = None
-
-
-
-
-
-
