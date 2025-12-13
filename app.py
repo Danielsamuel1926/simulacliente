@@ -282,11 +282,11 @@ with st.sidebar:
     
     col_p1, col_p2 = st.columns(2)
     with col_p1:
-        periodo = st.selectbox("Periodo", ["Mensile","Bimestrale"], key="periodo_sb")
+        periodo = st.selectbox("Periodo Bolletta", ["Mensile","Bimestrale"], key="periodo_sb")
     with col_p2:
-        mese1 = st.selectbox("Mese Inizio", MESI, key="mese1_sb")
+        mese1 = st.selectbox("Mese 1Mese", MESI, key="mese1_sb")
     
-    mese2 = st.selectbox("Mese Fine", MESI, key="mese2_sb") if periodo=="Bimestrale" else None
+    mese2 = st.selectbox("Mese 2Mesi", MESI, key="mese2_sb") if periodo=="Bimestrale" else None
     
     st.markdown("---")
     
@@ -565,3 +565,4 @@ if st.session_state.get("calc_hidden"):
 else:
     # Messaggio iniziale
     st.info(f"Per iniziare la simulazione dell'offerta {offerta}, inserisci i parametri richiesti nel pannello di controllo laterale (Sidebar) e clicca 'Avvia Simulazione'.")
+
