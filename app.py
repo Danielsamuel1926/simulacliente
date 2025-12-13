@@ -86,12 +86,12 @@ footer {
 
 
 /* ---------------------------------- */
-/* STILE BOTTONE (Avvia Simulazione) - NUOVO STILE INVERSO */
+/* STILE BOTTONE (Avvia Simulazione & Inizia Simulazione) */
 /* ---------------------------------- */
 
-/* 1. Stato Normale e Hover: Bottone Azione (Azzurro/Bianco) */
+/* Stato Normale: Bottone Azione (Azzurro/Bianco) */
 div.stButton > button {
-    background-color: #262573; /* Blu Luminoso (Colore primario) */
+    background-color: #00BFFF; /* Azzurro luminoso (Colore primario) */
     color: white !important; /* Testo bianco */
     font-weight: bold;
     border: none;
@@ -100,13 +100,13 @@ div.stButton > button {
     transition: background-color 0.2s; /* Transizione per l'effetto hover */
 }
 
-/* 2. Stato Cliccato/Attivo: Bottone Scuro (Inversione come richiesto) */
+/* Stato Cliccato/Attivo: Bottone Scuro (Inversione come richiesto) */
 div.stButton > button:active {
     background-color: #3e4451 !important; /* Grigio scuro (In linea con la tua sidebar) */
     color: #00BFFF !important; /* Testo azzurro per evidenziare */
 }
 
-/* 3. Stato al passaggio del mouse (Optional, lo rendiamo leggermente più scuro/intenso) */
+/* Stato al passaggio del mouse */
 div.stButton > button:hover {
     background-color: #009ACD; /* Un tono di azzurro più scuro per l'hover */
     color: white !important;
@@ -359,7 +359,7 @@ with st.sidebar:
 
 
 # ==============================
-# CORPO PRINCIPALE (RISULTATI DASHBOARD)
+# CORPO PRINCIPALE (RISULTATI DASHBOARD / PULSANTE INIZIALE)
 # ==============================
 
 if st.session_state.get("calc_hidden"):
@@ -483,7 +483,7 @@ if st.session_state.get("calc_hidden"):
                                                 "PSV (€/Smc)")
                 st.plotly_chart(fig_prices, use_container_width=True)
                 
-            
+            # 
 
         with col_price2:
             st.markdown("#### Riepilogo Prezzi Base")
@@ -534,7 +534,7 @@ if st.session_state.get("calc_hidden"):
             fig_bar.update_layout(xaxis_title="", yaxis_title="Costo (€)", showlegend=False, margin=dict(t=30, b=0, l=0, r=0))
             fig_bar.update_traces(texttemplate='€%{text:.0f}', textposition='outside')
             st.plotly_chart(fig_bar, use_container_width=True)
-            
+            # 
 
 
         # --- BREAKDOWN DEI COSTI (GRAFICO A CIAMBELLA) ---
@@ -563,7 +563,7 @@ if st.session_state.get("calc_hidden"):
             fig_pie.update_layout(showlegend=False, uniformtext_minsize=12, uniformtext_mode='hide', margin=dict(t=30, b=0, l=0, r=0))
             
             st.plotly_chart(fig_pie, use_container_width=True)
-            
+            # 
 
         st.markdown("---")
 
@@ -591,8 +591,36 @@ if st.session_state.get("calc_hidden"):
         st.error(f"⚠️ Errore nel calcolo. Controlla i dati inseriti o la logica interna: {e}")
 
 else:
-    # Messaggio iniziale
-    st.info(f"Per iniziare la simulazione dell'offerta {offerta}, inserisci i parametri richiesti nel pannello di controllo laterale (Sidebar) e clicca 'Avvia Simulazione'.")
+    # --- Pulsante che apre la sidebar (Trick CSS/JS) ---
+    st.markdown("## Benvenuto nel Simulatore Energia")
+    st.info("Clicca il pulsante qui sotto per accedere al pannello di controllo e iniziare la simulazione.")
+    
+    # 1. Definisci il codice JavaScript per simulare il clic sul pulsante nativo della sidebar
+    js_code = """
+        <script>
+        // Cerca il pulsante "Open sidebar" e simula un click
+        var button = document.querySelector('button[title="Open sidebar"]');
+        if (button) {
+            button.click();
+        }
+        </script>
+        """
+
+    # 2. Mostra il pulsante "Inizia la Simulazione" nel corpo centrale.
+    col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
+    with col_c2:
+        if st.button("▶️ Inizia la Simulazione", key="start_app_button", use_container_width=True):
+            # 3. Al clic, inietta lo script JavaScript per forzare l'apertura della sidebar.
+            # (Usiamo st.html per iniettare lo script, disponibile nelle versioni recenti di Streamlit)
+            st.html(js_code)
+            
+            # 4. Mostra un messaggio di attesa/istruzione
+            st.toast("Apertura del pannello di controllo in corso...", icon='🛠️')
+            st.success("Utilizza la **Sidebar** (a sinistra) per inserire i dati di consumo e avviare il calcolo.")
+
+    # 5. Forziamo lo stato calc_hidden a None per nascondere il dashboard finché non vengono inseriti i dati
+    st.session_state.calc_hidden = None
+
 
 
 
