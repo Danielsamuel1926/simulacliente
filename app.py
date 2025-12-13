@@ -7,7 +7,7 @@ import plotly.express as px
 # CONFIGURAZIONE PAGINA
 # ==============================
 st.set_page_config(
-    page_title="Simulatore Energia Alto Stile",
+    page_title="Simulatore Energia Daniele Lettera",
     layout="wide",
     initial_sidebar_state="expanded"  # Sidebar aperta all'avvio
 )
@@ -565,4 +565,5 @@ if st.session_state.get("calc_hidden"):
 else:
     # Messaggio iniziale
     st.info(f"Per iniziare la simulazione dell'offerta {offerta}, inserisci i parametri richiesti nel pannello di controllo laterale (Sidebar) e clicca 'Avvia Simulazione'.")
+
 
