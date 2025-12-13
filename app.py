@@ -86,6 +86,34 @@ footer {
 
 
 /* ---------------------------------- */
+/* STILE BOTTONE (Avvia Simulazione) - NUOVO STILE INVERSO */
+/* ---------------------------------- */
+
+/* 1. Stato Normale e Hover: Bottone Azione (Azzurro/Bianco) */
+div.stButton > button {
+    background-color: #00BFFF; /* Azzurro luminoso (Colore primario) */
+    color: white !important; /* Testo bianco */
+    font-weight: bold;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    transition: background-color 0.2s; /* Transizione per l'effetto hover */
+}
+
+/* 2. Stato Cliccato/Attivo: Bottone Scuro (Inversione come richiesto) */
+div.stButton > button:active {
+    background-color: #3e4451 !important; /* Grigio scuro (In linea con la tua sidebar) */
+    color: #00BFFF !important; /* Testo azzurro per evidenziare */
+}
+
+/* 3. Stato al passaggio del mouse (Optional, lo rendiamo leggermente più scuro/intenso) */
+div.stButton > button:hover {
+    background-color: #009ACD; /* Un tono di azzurro più scuro per l'hover */
+    color: white !important;
+}
+
+
+/* ---------------------------------- */
 /* STILE METRICHE SCURE */
 /* ---------------------------------- */
 [data-testid="stMetric"] {
@@ -565,6 +593,7 @@ if st.session_state.get("calc_hidden"):
 else:
     # Messaggio iniziale
     st.info(f"Per iniziare la simulazione dell'offerta {offerta}, inserisci i parametri richiesti nel pannello di controllo laterale (Sidebar) e clicca 'Avvia Simulazione'.")
+
 
 
 
