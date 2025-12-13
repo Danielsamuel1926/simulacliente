@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from streamlit_option_menu import option_menu
 import plotly.express as px
-import plotly.graph_objects as go 
+import plotly.graph_objects as go # Import necessario per correggere l'errore del dash
 
 # ==============================
 # CONFIGURAZIONE PAGINA
@@ -20,25 +20,24 @@ MESI = ["GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO",
         "LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"]
 
 # ==============================
-# INIZIALIZZAZIONE DELLO STATO (CORREZIONE COMPLETA)
+# INIZIALIZZAZIONE DELLO STATO (Correzione Completa degli AttributeError)
 # ==============================
 if 'app_started' not in st.session_state:
     st.session_state.app_started = False
 if 'calc_hidden' not in st.session_state:
     st.session_state.calc_hidden = False
     
-# Inizializzazione di tutti i campi utilizzati nel form e nella fase di calcolo
+# Inizializzazione di tutti i campi utilizzati nella Fase 3 con valori di default
 if 'cliente_main' not in st.session_state:
     st.session_state.cliente_main = "" 
 if 'tipo_main' not in st.session_state:
     st.session_state.tipo_main = "Luce"
-# NUOVE INIZIALIZZAZIONI PER EVITARE ATTRIBUTEERROR
 if 'periodo_main' not in st.session_state:
     st.session_state.periodo_main = "Mensile"
 if 'mese1_main' not in st.session_state:
-    st.session_state.mese1_main = MESI[0] # GENNAIO
+    st.session_state.mese1_main = MESI[0] 
 if 'mese2_main' not in st.session_state:
-    st.session_state.mese2_main = MESI[1] # FEBBRAIO (default per Bimestrale)
+    st.session_state.mese2_main = MESI[1] 
 if 'kwh_main' not in st.session_state:
     st.session_state.kwh_main = 300.0
 if 'kw_main' not in st.session_state:
@@ -59,25 +58,21 @@ if 'canone_tv_main' not in st.session_state:
     st.session_state.canone_tv_main = 0.0
 
 
-# Funzione per passare da input a risultati
+# Funzione callback per avviare il calcolo
 def start_calculation():
     st.session_state.calc_hidden = True
 
-# Funzione di utilità per salvare lo stato dell'offerta (uso con on_change)
+# Funzione di utilità per salvare lo stato del menu Luce/Gas
 def save_menu_state(menu_selection):
     st.session_state.tipo_main = menu_selection
 
 
 # ==============================
 # STILE GENERALE (CSS)
-# ... (omesso per brevità, resta invariato)
 # ==============================
 st.markdown("""
 <style>
-/* Corpo */
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
+/* Questa sezione completa il tema dark definito in config.toml */
 .header-container {
     background: linear-gradient(90deg, #0b0c12, #253073);
     padding: 20px;
@@ -85,6 +80,7 @@ body {
     border-radius: 12px;
     margin-bottom: 20px;
 }
+/* Nasconde completamente la sidebar */
 section[data-testid="stSidebar"] {
     visibility: hidden;
     width: 0px !important;
@@ -109,6 +105,7 @@ div.stButton > button:hover {
     background-color: #009ACD; 
     color: white !important;
 }
+/* Contenitore scuro per il form di input */
 .form-container {
     background-color: #1c1f26; 
     padding: 25px;
@@ -121,6 +118,7 @@ div.stButton > button:hover {
     border-bottom: 2px solid #3e4451;
     padding-bottom: 5px;
 }
+/* Stili per le metriche nel dashboard */
 [data-testid="stMetric"] {
     background-color: #2c3038; 
     padding: 15px;
@@ -133,7 +131,7 @@ div.stButton > button:hover {
 
 
 # ==============================
-# COSTANTI & FUNZIONI
+# COSTANTI E FUNZIONI DI CALCOLO
 # ==============================
 QUOTA_FISSA_LUCE = 22.80 / 12
 QUOTA_POTENZA = 2.10
@@ -162,14 +160,17 @@ def aliquota_iva_gas(smc_annuo):
     return 0.10 if smc_annuo <= 480 else 0.22
 
 def format_currency(value):
+    # Formattazione per valuta italiana (es. 1.234,56 €)
     return f"€ {value:,.2f}".replace(',', '_').replace('.', ',').replace('_', '.')
 
+# FUNZIONE CORRETTA PER PLOTLY
 def create_price_chart(prices, avg_price, mesi_idx, titolo, nome_indice):
     df_prices = pd.DataFrame({
         'Mese': MESI,
         nome_indice: prices[1:] 
     })
     
+    # 1. Crea il grafico di base (Linea PUN/PSV)
     fig = px.line(
         df_prices, 
         x='Mese', 
@@ -179,10 +180,12 @@ def create_price_chart(prices, avg_price, mesi_idx, titolo, nome_indice):
         color_discrete_sequence=['#00BFFF']
     )
     
+    # Prepara i dati per la linea media (NaN al di fuori del periodo selezionato)
     avg_line_values = [None] * 12
     for m in mesi_idx:
         avg_line_values[m-1] = avg_price
 
+    # 2. Aggiunge la linea della media usando go.Scatter con stile dash corretto
     fig.add_trace(
         go.Scatter(
             x=MESI, 
@@ -201,6 +204,7 @@ def create_price_chart(prices, avg_price, mesi_idx, titolo, nome_indice):
         legend_title_text=''
     )
     
+    # Aggiunge le barre verticali di sfondo
     for i in mesi_idx:
         fig.add_vrect(
             x0=MESI[i-1], x1=MESI[i-1],
@@ -241,113 +245,112 @@ if not st.session_state.app_started:
             st.rerun()
             
 elif not st.session_state.calc_hidden:
-    # --- FASE 2: Form di Input Dati ---
+    # --- FASE 2: Form di Input Dati (Correzione UI) ---
     st.markdown("## 1. 🛠️ Configurazione Dati")
     st.markdown("---")
     
-    with st.container(border=False):
-        st.markdown('<div class="form-container">', unsafe_allow_html=True)
+    # Inizio del blocco form-container (stile scuro)
+    st.markdown('<div class="form-container">', unsafe_allow_html=True)
 
-        col_t1, col_t2 = st.columns([1, 3])
-        with col_t1:
-             tipo = option_menu(
-                menu_title=None,
-                options=["Luce", "Gas"],
-                icons=["bolt", "fire"],
-                default_index=["Luce", "Gas"].index(st.session_state.tipo_main),
-                orientation="horizontal",
-                on_change=lambda: save_menu_state(st.session_state.menu_tipo),
-                key="menu_tipo",
-                styles={
-                    "container": {"padding": "5!important", "background-color": "#1c1f26", "border-radius": "5px"},
-                    "nav-link": {"font-size": "14px", "color": "#f0f2f6", "padding": "5px"},
-                    "nav-link-selected": {"background-color": "#00BFFF", "color": "white"},
-                }
-            )
-        
-        tipo = st.session_state.tipo_main
-        offerta = "F&F" 
-        
-        with col_t2:
-            st.markdown(f"""
-            <div style="background-color: #3e4451; padding: 5px; border-radius: 5px; text-align: center; margin-top: 10px; margin-left: 10px;">
-                <span style="font-weight: bold; color: #00BFFF;">Offerta Fissa Selezionata: {offerta}</span>
-            </div>
-            """, unsafe_allow_html=True)
+    col_t1, col_t2 = st.columns([1, 3])
+    with col_t1:
+         tipo = option_menu(
+            menu_title=None,
+            options=["Luce", "Gas"],
+            icons=["bolt", "fire"],
+            default_index=["Luce", "Gas"].index(st.session_state.tipo_main),
+            orientation="horizontal",
+            on_change=lambda: save_menu_state(st.session_state.menu_tipo),
+            key="menu_tipo",
+            styles={
+                "container": {"padding": "5!important", "background-color": "#1c1f26", "border-radius": "5px"},
+                "nav-link": {"font-size": "14px", "color": "#f0f2f6", "padding": "5px"},
+                "nav-link-selected": {"background-color": "#00BFFF", "color": "white"},
+            }
+        )
+    
+    tipo = st.session_state.tipo_main
+    offerta = "F&F" 
+    
+    with col_t2:
+        st.markdown(f"""
+        <div style="background-color: #3e4451; padding: 5px; border-radius: 5px; text-align: center; margin-top: 10px; margin-left: 10px;">
+            <span style="font-weight: bold; color: #00BFFF;">Offerta Fissa Selezionata: {offerta}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
 
-        # --- DATI BASE ---
-        st.markdown("### Dati Cliente e Periodo")
-        col_c1, col_c2, col_c3, col_c4 = st.columns(4)
-        
-        with col_c1:
-            cliente = st.text_input("Nome Cliente", key="cliente_main", value=st.session_state.cliente_main)
-        with col_c2:
-            periodo = st.selectbox(
-                "Periodo Bolletta", 
-                ["Mensile","Bimestrale"], 
-                index=["Mensile","Bimestrale"].index(st.session_state.periodo_main), # Uso del default
-                key="periodo_main"
-            )
-        with col_c3:
-            mese1 = st.selectbox(
-                "Mese 1", 
-                MESI, 
-                index=MESI.index(st.session_state.mese1_main), # Uso del default
-                key="mese1_main"
-            )
-        with col_c4:
-            # Uso il valore di default per l'indice
-            mese2_index = MESI.index(st.session_state.mese2_main) if st.session_state.periodo_main == "Bimestrale" else 0
-            mese2 = st.selectbox(
-                "Mese 2", 
-                MESI, 
-                index=mese2_index,
-                key="mese2_main"
-            ) if periodo=="Bimestrale" else None
+    # --- DATI BASE ---
+    st.markdown("### Dati Cliente e Periodo")
+    col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+    
+    with col_c1:
+        cliente = st.text_input("Nome Cliente", key="cliente_main", value=st.session_state.cliente_main)
+    with col_c2:
+        periodo = st.selectbox(
+            "Periodo Bolletta", 
+            ["Mensile","Bimestrale"], 
+            index=["Mensile","Bimestrale"].index(st.session_state.periodo_main),
+            key="periodo_main"
+        )
+    with col_c3:
+        mese1 = st.selectbox(
+            "Mese 1", 
+            MESI, 
+            index=MESI.index(st.session_state.mese1_main),
+            key="mese1_main"
+        )
+    with col_c4:
+        mese2_index = MESI.index(st.session_state.mese2_main) if st.session_state.periodo_main == "Bimestrale" and st.session_state.mese2_main in MESI else 0
+        mese2 = st.selectbox(
+            "Mese 2", 
+            MESI, 
+            index=mese2_index,
+            key="mese2_main"
+        ) if periodo=="Bimestrale" else None
 
-        st.markdown("---")
+    st.markdown("---")
+    
+    # --- DATI DI CONSUMO ---
+    st.markdown("### Dati di Consumo")
+    col_d1, col_d2, col_d3 = st.columns(3)
+    
+    if tipo == "Luce":
+        with col_d1:
+            kwh = st.number_input("Consumo Luce (kWh)", min_value=0.0, value=st.session_state.kwh_main, key="kwh_main")
+        with col_d2:
+            kw = st.selectbox("Potenza impegnata (kW)", [1,1.5,2,2.5,3,4.5,5,5.5,6], index=[1,1.5,2,2.5,3,4.5,5,5.5,6].index(st.session_state.kw_main), key="kw_main")
+        smc = 0
+        smc_annuo = 0
+    else:
+        with col_d1:
+            smc = st.number_input("Consumo Gas (m³)", min_value=0.0, value=st.session_state.smc_main, key="smc_main")
+        with col_d2:
+            smc_annuo = st.number_input("Consumo annuo Gas (m³)", min_value=0.0, value=st.session_state.smc_annuo_main, key="smc_annuo_main")
+        kwh = 0
+        kw = 3 
+    
+    st.markdown("---")
+    
+    # --- DATI CONFRONTO ---
+    st.markdown("### Dati Fattura Attuale e Oneri Extra")
+    col_f1, col_f2, col_f3 = st.columns(3)
+    
+    with col_f1:
+        fatt_attuale = st.number_input("Importo Fattura Attuale (€)", min_value=0.0, value=st.session_state.fatt_attuale_main, key="fatt_attuale_main")
+    with col_f2:
+        bonus = st.number_input("Bonus Sociale (€)", min_value=0.0, value=st.session_state.bonus_main, key="bonus_main")
+        ricalcoli = st.number_input("Ricalcoli (€)", min_value=0.0, value=st.session_state.ricalcoli_main, key="ricalcoli_main")
+    with col_f3:
+        altre = st.number_input("Altre Partite (€)", min_value=0.0, value=st.session_state.altre_main, key="altre_main")
+        canone_tv = st.number_input("Canone TV (€) (Solo Luce)", min_value=0.0, value=st.session_state.canone_tv_main, key="canone_tv_main")
+    
+    if tipo == "Luce":
+        st.caption("ℹ️ **NOTA:** Inserisci qui l'importo del Canone Rai TV presente nella fattura del cliente se applicabile in questo periodo di calcolo.")
+    elif canone_tv > 0:
+        st.warning("⚠️ Il Canone TV non è applicabile alle bollette Gas. Controlla il valore.")
         
-        # --- DATI DI CONSUMO ---
-        st.markdown("### Dati di Consumo")
-        col_d1, col_d2, col_d3 = st.columns(3)
-        
-        if tipo == "Luce":
-            with col_d1:
-                kwh = st.number_input("Consumo Luce (kWh)", min_value=0.0, value=st.session_state.kwh_main, key="kwh_main")
-            with col_d2:
-                kw = st.selectbox("Potenza impegnata (kW)", [1,1.5,2,2.5,3,4.5,5,5.5,6], index=[1,1.5,2,2.5,3,4.5,5,5.5,6].index(st.session_state.kw_main), key="kw_main")
-            smc = 0
-            smc_annuo = 0
-        else:
-            with col_d1:
-                smc = st.number_input("Consumo Gas (m³)", min_value=0.0, value=st.session_state.smc_main, key="smc_main")
-            with col_d2:
-                smc_annuo = st.number_input("Consumo annuo Gas (m³)", min_value=0.0, value=st.session_state.smc_annuo_main, key="smc_annuo_main")
-            kwh = 0
-            kw = 3 
-        
-        st.markdown("---")
-        
-        # --- DATI CONFRONTO ---
-        st.markdown("### Dati Fattura Attuale e Oneri Extra")
-        col_f1, col_f2, col_f3 = st.columns(3)
-        
-        with col_f1:
-            fatt_attuale = st.number_input("Importo Fattura Attuale (€)", min_value=0.0, value=st.session_state.fatt_attuale_main, key="fatt_attuale_main")
-        with col_f2:
-            bonus = st.number_input("Bonus Sociale (€)", min_value=0.0, value=st.session_state.bonus_main, key="bonus_main")
-            ricalcoli = st.number_input("Ricalcoli (€)", min_value=0.0, value=st.session_state.ricalcoli_main, key="ricalcoli_main")
-        with col_f3:
-            altre = st.number_input("Altre Partite (€)", min_value=0.0, value=st.session_state.altre_main, key="altre_main")
-            canone_tv = st.number_input("Canone TV (€) (Solo Luce)", min_value=0.0, value=st.session_state.canone_tv_main, key="canone_tv_main")
-        
-        if tipo == "Luce":
-            st.caption("ℹ️ **NOTA:** Inserisci qui l'importo del Canone Rai TV presente nella fattura del cliente se applicabile in questo periodo di calcolo.")
-        elif canone_tv > 0:
-            st.warning("⚠️ Il Canone TV non è applicabile alle bollette Gas. Controlla il valore.")
-            
-        st.markdown('</div>', unsafe_allow_html=True) 
+    st.markdown('</div>', unsafe_allow_html=True) # Chiusura form-container
 
     st.markdown("---")
     
@@ -359,15 +362,14 @@ elif not st.session_state.calc_hidden:
 else:
     # --- FASE 3: Dashboard dei Risultati ---
     
-    # Recupera i dati dallo stato della sessione (Sicuro dopo la correzione)
+    # Recupera i dati dallo stato della sessione 
     tipo = st.session_state.tipo_main
     offerta = "F&F"
     cliente = st.session_state.cliente_main
-    periodo = st.session_state.periodo_main # Ora ha un valore di default
-    mese1 = st.session_state.mese1_main # Ora ha un valore di default
+    periodo = st.session_state.periodo_main
+    mese1 = st.session_state.mese1_main
     mese2 = st.session_state.get('mese2_main')
     
-    # Usiamo .get() per i campi opzionali/intercambiabili
     kwh = st.session_state.get('kwh_main', 0.0) 
     kw = st.session_state.get('kw_main', 3)
     smc = st.session_state.get('smc_main', 0.0)
@@ -382,7 +384,6 @@ else:
 
     # 1. LOGICA DI CALCOLO
     try:
-        # Aggiungo un controllo per evitare errori se i mesi sono None (solo nel caso Bimestrale non scelto)
         mesi_list = [mese1]
         if periodo=="Bimestrale" and mese2 is not None:
              mesi_list = [mese1, mese2]
@@ -458,8 +459,6 @@ else:
         st.header(f"2. Risultati Simulazione Offerta {offerta} ({num_mesi} Mesi)")
         st.markdown("---")
         
-        # 
-
         col_m1, col_m2, col_m3 = st.columns(3)
         risparmio_reale = fatt_attuale - totale_simulato
         
@@ -515,7 +514,6 @@ else:
         # Confronto
         with col_g1:
             st.markdown("#### 📊 Confronto Attuale vs. Simulato")
-            # 
             df_comparison = pd.DataFrame({
                 'Scenario': ['Fattura Attuale', f'Offerta {offerta}'],
                 'Costo (€)': [fatt_attuale, totale_simulato]
@@ -530,7 +528,6 @@ else:
         # Breakdown
         with col_g2:
             st.markdown(f"#### 🍩 Composizione del Costo Simulato ({offerta})")
-            # 
             voci_breakdown = [(k, v) for k, v in dati_simulati.items()]
             if canone_tv > 0: voci_breakdown.append(("Canone TV", canone_tv))
             if bonus > 0: voci_breakdown.append(("Bonus Sociale", bonus))
@@ -561,7 +558,6 @@ else:
             st.markdown(f"**Totale Bolletta Stimata: {format_currency(totale_simulato)}**")
 
     except Exception as e:
-        # Mostra un errore più dettagliato solo se non è un problema di stato, altrimenti è un problema di dati.
         st.error(f"⚠️ Errore nel calcolo. Controlla i dati inseriti: {e}")
         
     st.markdown("---")
