@@ -15,15 +15,11 @@ st.set_page_config(
 # ==============================
 # INIZIALIZZAZIONE DELLO STATO (PULIZIA CAMPI)
 # ==============================
-# Inizializzazione sicura dello stato
 if 'cliente_sb' not in st.session_state:
     st.session_state.cliente_sb = "" 
-    
-# 'calc_hidden' è True/False in base al clic del bottone 'Avvia Simulazione' (key="calc_hidden")
-# Non è necessario inizializzarlo esplicitamente se usato solo con st.session_state.get()
 
 # ==============================
-# STILE GENERALE (CSS) - Correzione Mobile & Sidebar
+# STILE GENERALE (CSS) - Correzioni Globali
 # ==============================
 st.markdown("""
 <style>
@@ -90,7 +86,7 @@ footer {
 
 
 /* ---------------------------------- */
-/* STILE BOTTONE (Avvia Simulazione & Inizia Simulazione) */
+/* STILE BOTTONE (Avvia Simulazione) */
 /* ---------------------------------- */
 
 /* Stato Normale: Bottone Azione (Azzurro/Bianco) */
@@ -165,6 +161,30 @@ div.stButton > button:hover {
     background-color: #3e4451 !important; 
     border-bottom: 1px solid #2c3038;
 }
+
+/* Stile per la card iniziale (messaggio di benvenuto) */
+.welcome-card {
+    padding: 20px;
+    border: 2px solid #00BFFF;
+    border-radius: 10px;
+    background-color: #1c1f26; 
+    box-shadow: 0 4px 12px rgba(0, 191, 255, 0.2); 
+    text-align: center;
+    margin-top: 30px;
+}
+.welcome-card h3 {
+    color: #f0f2f6; 
+    margin-top: 0;
+}
+.welcome-card p {
+    color: #cccccc;
+}
+.welcome-card .highlight {
+    color: #00BFFF; 
+    font-weight: bold; 
+    font-size: 1.1em;
+}
+
 
 </style>
 """, unsafe_allow_html=True)
@@ -365,7 +385,7 @@ with st.sidebar:
 
 
 # ==============================
-# CORPO PRINCIPALE (RISULTATI DASHBOARD / PULSANTE INIZIALE)
+# CORPO PRINCIPALE (RISULTATI DASHBOARD / MESSAGGIO INIZIALE)
 # ==============================
 
 if st.session_state.get("calc_hidden"):
@@ -597,28 +617,18 @@ if st.session_state.get("calc_hidden"):
         st.error(f"⚠️ Errore nel calcolo. Controlla i dati inseriti o la logica interna: {e}")
 
 else:
-    # Mostra la schermata iniziale con il pulsante
+    # Schermata iniziale veloce e nativa (sostituisce il pulsante lento)
     st.markdown("## Benvenuto nel Simulatore Energia")
-    st.info("Clicca il pulsante qui sotto per accedere al pannello di controllo e iniziare la simulazione.")
     
-    # Codice JavaScript per simulare il clic sul pulsante nativo della sidebar
-    js_code = """
-        <script>
-        // Cerca il pulsante "Open sidebar" e simula un click
-        var button = document.querySelector('button[title="Open sidebar"]');
-        if (button) {
-            button.click();
-        }
-        </script>
-        """
-
-    # Mostra il pulsante "Inizia la Simulazione" nel corpo centrale.
-    col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
-    with col_c2:
-        if st.button("▶️ Inizia la Simulazione", key="start_app_button", use_container_width=True):
-            # Al clic, inietta lo script JavaScript per forzare l'apertura della sidebar.
-            st.html(js_code)
-            
-            # Mostra un messaggio di attesa/istruzione
-            st.toast("Apertura del pannello di controllo in corso...", icon='🛠️')
-            st.success("Utilizza la **Sidebar** (a sinistra) per inserire i dati di consumo e avviare il calcolo.")
+    # Card di istruzioni chiare e visive
+    st.markdown("""
+    <div class="welcome-card">
+        <h3>Inizia la Simulazione</h3>
+        <p>
+            Per configurare i parametri (Luce/Gas, Consumi, Periodo), utilizza il **Pannello di Controllo Laterale** (Sidebar).
+        </p>
+        <p class="highlight">
+            ⬅️ Inserisci i tuoi dati qui a sinistra e clicca "🚀 Avvia Simulazione".
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
