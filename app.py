@@ -213,7 +213,7 @@ elif not st.session_state.calc_hidden:
     with col_t2:
         st.markdown(f"""
         <div style="background-color: #3e4451; padding: 5px; border-radius: 5px; text-align: center; margin-top: 10px; margin-left: 10px;">
-            <span style="font-weight: bold; color: #00BFFF;">Offerta Fissa Selezionata: {offerta}</span>
+            <span style="font-weight: bold; color: #00BFFF;">Offerta Selezionata: {offerta}</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -532,3 +532,4 @@ else:
         if st.button("⬅️ Torna alla Configurazione", key="reset_button", use_container_width=True):
             st.session_state.calc_hidden = False
             st.rerun()
+
