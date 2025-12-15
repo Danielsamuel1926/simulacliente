@@ -19,6 +19,9 @@ st.set_page_config(
 MESI = ["GENNAIO","FEBBRAIO","MARZO","APRILE","MAGGIO","GIUGNO",
         "LUGLIO","AGOSTO","SETTEMBRE","OTTOBRE","NOVEMBRE","DICEMBRE"]
 
+# Le opzioni per kW devono essere float per coerenza
+OPZIONI_KW = [1.0, 1.5, 2.0, 2.5, 3.0, 4.5, 5.0, 5.5, 6.0]
+
 # ==============================
 # INIZIALIZZAZIONE DELLO STATO 
 # ==============================
@@ -40,8 +43,12 @@ if 'mese2_main' not in st.session_state:
     st.session_state.mese2_main = MESI[1] 
 if 'kwh_main' not in st.session_state:
     st.session_state.kwh_main = 300.0
+# Assicurati che kw_main sia un float e presente nella lista OPZIONI_KW
 if 'kw_main' not in st.session_state:
-    st.session_state.kw_main = 3
+    st.session_state.kw_main = 3.0 
+elif st.session_state.kw_main not in OPZIONI_KW:
+    st.session_state.kw_main = 3.0 # Fallback robusto
+    
 if 'smc_main' not in st.session_state:
     st.session_state.smc_main = 150.0
 if 'smc_annuo_main' not in st.session_state:
@@ -62,13 +69,11 @@ if 'canone_tv_main' not in st.session_state:
 def start_calculation():
     st.session_state.calc_hidden = True
 
-# --- MODIFICA APPLICATA QUI ---
-# Funzione di utilità per salvare lo stato del menu Luce/Gas
+# Funzione di utilità per salvare lo stato del menu Luce/Gas (CORRETTA: 0 ARGOMENTI)
 def save_menu_state():
     """Legge il valore aggiornato del menu Luce/Gas (chiave 'menu_tipo')
     e lo salva nella variabile principale 'tipo_main'."""
     st.session_state.tipo_main = st.session_state.menu_tipo
-# -----------------------------
 
 
 # ==============================
@@ -251,7 +256,6 @@ if not st.session_state.app_started:
 elif not st.session_state.calc_hidden:
     # --- FASE 2: Form di Input Dati (Correzione UI) ---
     st.markdown("## 1. 🛠️ Configurazione Dati")
-    # RIMOSSA st.markdown("---") per eliminare la barra orizzontale sotto il titolo
     
     # Inizio del blocco form-container (stile scuro)
     st.markdown('<div class="form-container">', unsafe_allow_html=True)
@@ -264,10 +268,9 @@ elif not st.session_state.calc_hidden:
             icons=["bolt", "fire"],
             default_index=["Luce", "Gas"].index(st.session_state.tipo_main),
             orientation="horizontal",
-            # --- MODIFICA APPLICATA QUI: Funzione passata direttamente senza lambda ---
+            # CORREZIONE APPLICATA QUI: Funzione a zero argomenti
             on_change=save_menu_state,
             key="menu_tipo",
-            # ------------------------------------------------------------------------
             styles={
                 "container": {"padding": "5!important", "background-color": "#1c1f26", "border-radius": "5px"},
                 "nav-link": {"font-size": "14px", "color": "#f0f2f6", "padding": "5px"},
@@ -275,7 +278,6 @@ elif not st.session_state.calc_hidden:
             }
         )
     
-    # Assicurati che 'tipo' usi il valore aggiornato dallo stato della sessione
     tipo = st.session_state.tipo_main
     offerta = "F&F" 
     
@@ -308,14 +310,12 @@ elif not st.session_state.calc_hidden:
             key="mese1_main"
         )
     with col_c4:
-        # Gestisce l'indice solo se il periodo è Bimestrale
+        # Gestione robusta del Mese 2 per il Bimestrale
         if periodo=="Bimestrale":
-            # Si assicura che il valore di default sia sensato per un periodo bimestrale, 
-            # altrimenti usa il primo mese (indice 0)
             try:
                 mese2_index = MESI.index(st.session_state.mese2_main)
-            except ValueError:
-                mese2_index = 0 
+            except (ValueError, TypeError): # Cattura anche TypeError se fosse None
+                mese2_index = 0 # Fallback al primo mese
                 
             mese2 = st.selectbox(
                 "Mese 2", 
@@ -324,10 +324,9 @@ elif not st.session_state.calc_hidden:
                 key="mese2_main"
             )
         else:
-            # Resetta il valore se non è bimestrale
+            # Imposta Mese 2 su None se il periodo è Mensile
             st.session_state.mese2_main = None
             mese2 = None
-
 
     st.markdown("---")
     
@@ -339,13 +338,18 @@ elif not st.session_state.calc_hidden:
         with col_d1:
             kwh = st.number_input("Consumo Luce (kWh)", min_value=0.0, value=st.session_state.kwh_main, key="kwh_main")
         with col_d2:
-            # Ho aggiunto la gestione dell'indice per evitare errori se 'kw_main' non è nella lista all'avvio (anche se qui sembra inizializzato correttamente)
+            # CORREZIONE APPLICATA QUI: Robustezza per la Potenza KW
+            kw_valore = float(st.session_state.kw_main)
+            
             try:
-                kw_index = [1,1.5,2,2.5,3,4.5,5,5.5,6].index(st.session_state.kw_main)
+                kw_index = OPZIONI_KW.index(kw_valore)
             except ValueError:
-                kw_index = 4 # Default 3 kW
+                kw_index = OPZIONI_KW.index(3.0) # Default 3 kW
                 
-            kw = st.selectbox("Potenza impegnata (kW)", [1,1.5,2,2.5,3,4.5,5,5.5,6], index=kw_index, key="kw_main")
+            kw = st.selectbox("Potenza impegnata (kW)", 
+                              OPZIONI_KW, 
+                              index=kw_index, 
+                              key="kw_main")
         smc = 0
         smc_annuo = 0
     else: # Tipo Gas
@@ -354,7 +358,7 @@ elif not st.session_state.calc_hidden:
         with col_d2:
             smc_annuo = st.number_input("Consumo annuo Gas (m³)", min_value=0.0, value=st.session_state.smc_annuo_main, key="smc_annuo_main")
         kwh = 0
-        kw = 3 
+        kw = 3.0 # Assicurati che kw_main sia float anche se non usato
     
     st.markdown("---")
     
@@ -394,11 +398,10 @@ else:
     cliente = st.session_state.cliente_main
     periodo = st.session_state.periodo_main
     mese1 = st.session_state.mese1_main
-    # Recupera mese2 solo se il periodo è Bimestrale e il valore esiste
     mese2 = st.session_state.get('mese2_main') if periodo=="Bimestrale" else None
     
     kwh = st.session_state.get('kwh_main', 0.0) 
-    kw = st.session_state.get('kw_main', 3)
+    kw = st.session_state.get('kw_main', 3.0) # Recupera come float
     smc = st.session_state.get('smc_main', 0.0)
     smc_annuo = st.session_state.get('smc_annuo_main', 0.0)
     
@@ -415,9 +418,8 @@ else:
         if periodo=="Bimestrale" and mese2 is not None:
              mesi_list = [mese1, mese2]
         elif periodo=="Bimestrale" and mese2 is None:
-             # Questo gestisce il caso in cui, nonostante il periodo sia Bimestrale, non ci sia un secondo mese
-             st.warning("Seleziona il secondo mese per il periodo bimestrale.")
-             st.stop() # Ferma l'esecuzione se i dati sono incompleti.
+             st.error("Seleziona il secondo mese per il periodo bimestrale.")
+             st.stop() 
 
         mesi_idx = [MESI.index(m)+1 for m in mesi_list]
         num_mesi = len(mesi_idx)
@@ -434,7 +436,6 @@ else:
             prezzo_medio_calcolato = prezzo_medio
             
             materia = kwh * prezzo_medio
-            # Ho usato i valori standard per la luce (si può affinare la QUOTA DI TRASPORTO)
             sp_rete = kwh * 0.0445
             quota_pot = kw * QUOTA_POTENZA * num_mesi
             oneri = ONERI_SISTEMA * num_mesi
@@ -461,9 +462,8 @@ else:
             
             materia = smc*(prezzo_medio_calcolato)
             sp_rete = QUOTA_VAR_DIST_GAS*smc + QUOTA_DIST_GAS * num_mesi
-            # Ho mantenuto la logica Oneri che include quote fisse e variabili come nel tuo codice
             oneri = ONERI_SISTEMA_GAS*num_mesi + (0.07*smc)+(0.12*smc) 
-            comm_tot = COMM*num_mesi + QUOTA_FISSA_GAS * num_mesi # Ho incluso la quota fissa Gas
+            comm_tot = COMM*num_mesi + QUOTA_FISSA_GAS * num_mesi 
             
             accise_gas = accisa_annua_gas(smc_annuo)*smc
             aliquota = aliquota_iva_gas(smc_annuo)
@@ -480,8 +480,6 @@ else:
             }
 
         # 2. CALCOLO TOTALE
-        # Calcola la somma di tutte le voci che non sono bonus (che è uno sconto, non un costo)
-        # Il Bonus Sociale deve essere trattato come una detrazione al totale
         totale_costi_lordi = sum(dati_simulati.values()) + ricalcoli + altre + canone_tv
         totale_simulato = totale_costi_lordi - bonus
         
@@ -506,7 +504,6 @@ else:
         col_m2.metric(
             label="Costo Simulato Totale",
             value=format_currency(totale_simulato),
-            # Ho aggiornato il delta per mostrare il risparmio/maggior costo rispetto all'attuale
             delta=f"Differenza: {format_currency(risparmio_reale)}",
             delta_color="inverse" if risparmio_reale < 0 else "normal"
         )
@@ -521,21 +518,21 @@ else:
         # --- GRAFICI E DETTAGLI ---
         st.markdown("## 📈 Andamento Prezzi all'Ingrosso")
         col_price1, col_price2 = st.columns([2, 1])
-        
-        # Visualizzazione PUN/PSV (grafico) 
+
         with col_price1:
             if tipo == "Luce":
                 fig_prices = create_price_chart(PUN, pun_medio_base, mesi_idx, 
                                                 "Andamento PUN (€/kWh) - Indice Prezzo all'Ingrosso", 
                                                 "PUN (€/kWh)")
                 st.plotly_chart(fig_prices, use_container_width=True)
+                
             else:
                 fig_prices = create_price_chart(PSV, psv_avg, mesi_idx, 
                                                 "Andamento PSV (€/Smc) - Indice Prezzo all'Ingrosso", 
                                                 "PSV (€/Smc)")
                 st.plotly_chart(fig_prices, use_container_width=True)
                 
-        # Riepilogo Prezzi Base (metriche)
+                
         with col_price2:
             st.markdown("#### Riepilogo Prezzi Base")
             if tipo == "Luce":
@@ -567,21 +564,17 @@ else:
         with col_g2:
             st.markdown(f"#### 🍩 Composizione del Costo Simulato ({offerta})")
             
-            # Prepara i dati per il grafico a torta, includendo Bonus come voce negativa
             voci_breakdown = []
             for k, v in dati_simulati.items():
                  voci_breakdown.append({"Voce di Costo": k, "Importo": v})
             
-            # Aggiungi voci extra
             if canone_tv > 0: voci_breakdown.append({"Voce di Costo": "Canone TV", "Importo": canone_tv})
             if ricalcoli > 0: voci_breakdown.append({"Voce di Costo": "Ricalcoli", "Importo": ricalcoli})
             if altre > 0: voci_breakdown.append({"Voce di Costo": "Altre Partite", "Importo": altre})
-            if bonus > 0: voci_breakdown.append({"Voce di Costo": "Bonus Sociale (Sconto)", "Importo": -bonus}) # Il bonus è uno sconto
+            if bonus > 0: voci_breakdown.append({"Voce di Costo": "Bonus Sociale (Sconto)", "Importo": -bonus})
             
             df_breakdown = pd.DataFrame(voci_breakdown)
             
-            # Per il grafico a torta, usiamo solo i costi effettivi, ignorando bonus/ricalcoli che distorcerebbero il breakdown
-            # Creiamo un DF filtrato per la visualizzazione corretta dei costi (solo voci positive)
             df_costi = df_breakdown[df_breakdown['Importo'] >= 0]
             
             fig_pie = px.pie(df_costi, values='Importo', names='Voce di Costo', hole=0.4, 
@@ -598,7 +591,6 @@ else:
             for voce, importo in dati_simulati.items():
                  righe_tabella.append({"Voce": voce, "Importo (€)": format_currency(importo)})
             
-            # Aggiungi extra come righe separate (con segno corretto)
             if canone_tv > 0: righe_tabella.append({"Voce": "Canone TV", "Importo (€)": format_currency(canone_tv)})
             if ricalcoli != 0: righe_tabella.append({"Voce": "Ricalcoli/Conguagli", "Importo (€)": format_currency(ricalcoli)})
             if altre != 0: righe_tabella.append({"Voce": "Altre Partite", "Importo (€)": format_currency(altre)})
@@ -609,7 +601,6 @@ else:
             st.markdown(f"**Totale Bolletta Stimata: {format_currency(totale_simulato)}**")
 
     except Exception as e:
-        # Aggiungo un fallback migliore per il debug
         st.error("⚠️ Errore critico nel calcolo o nella visualizzazione.")
         st.exception(e)
         
