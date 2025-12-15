@@ -62,9 +62,13 @@ if 'canone_tv_main' not in st.session_state:
 def start_calculation():
     st.session_state.calc_hidden = True
 
+# --- MODIFICA APPLICATA QUI ---
 # Funzione di utilità per salvare lo stato del menu Luce/Gas
-def save_menu_state(menu_selection):
-    st.session_state.tipo_main = menu_selection
+def save_menu_state():
+    """Legge il valore aggiornato del menu Luce/Gas (chiave 'menu_tipo')
+    e lo salva nella variabile principale 'tipo_main'."""
+    st.session_state.tipo_main = st.session_state.menu_tipo
+# -----------------------------
 
 
 # ==============================
@@ -260,8 +264,10 @@ elif not st.session_state.calc_hidden:
             icons=["bolt", "fire"],
             default_index=["Luce", "Gas"].index(st.session_state.tipo_main),
             orientation="horizontal",
-            on_change=lambda: save_menu_state(st.session_state.menu_tipo),
+            # --- MODIFICA APPLICATA QUI: Funzione passata direttamente senza lambda ---
+            on_change=save_menu_state,
             key="menu_tipo",
+            # ------------------------------------------------------------------------
             styles={
                 "container": {"padding": "5!important", "background-color": "#1c1f26", "border-radius": "5px"},
                 "nav-link": {"font-size": "14px", "color": "#f0f2f6", "padding": "5px"},
@@ -269,6 +275,7 @@ elif not st.session_state.calc_hidden:
             }
         )
     
+    # Assicurati che 'tipo' usi il valore aggiornato dallo stato della sessione
     tipo = st.session_state.tipo_main
     offerta = "F&F" 
     
@@ -301,13 +308,26 @@ elif not st.session_state.calc_hidden:
             key="mese1_main"
         )
     with col_c4:
-        mese2_index = MESI.index(st.session_state.mese2_main) if st.session_state.periodo_main == "Bimestrale" and st.session_state.mese2_main in MESI else 0
-        mese2 = st.selectbox(
-            "Mese 2", 
-            MESI, 
-            index=mese2_index,
-            key="mese2_main"
-        ) if periodo=="Bimestrale" else None
+        # Gestisce l'indice solo se il periodo è Bimestrale
+        if periodo=="Bimestrale":
+            # Si assicura che il valore di default sia sensato per un periodo bimestrale, 
+            # altrimenti usa il primo mese (indice 0)
+            try:
+                mese2_index = MESI.index(st.session_state.mese2_main)
+            except ValueError:
+                mese2_index = 0 
+                
+            mese2 = st.selectbox(
+                "Mese 2", 
+                MESI, 
+                index=mese2_index,
+                key="mese2_main"
+            )
+        else:
+            # Resetta il valore se non è bimestrale
+            st.session_state.mese2_main = None
+            mese2 = None
+
 
     st.markdown("---")
     
@@ -319,10 +339,16 @@ elif not st.session_state.calc_hidden:
         with col_d1:
             kwh = st.number_input("Consumo Luce (kWh)", min_value=0.0, value=st.session_state.kwh_main, key="kwh_main")
         with col_d2:
-            kw = st.selectbox("Potenza impegnata (kW)", [1,1.5,2,2.5,3,4.5,5,5.5,6], index=[1,1.5,2,2.5,3,4.5,5,5.5,6].index(st.session_state.kw_main), key="kw_main")
+            # Ho aggiunto la gestione dell'indice per evitare errori se 'kw_main' non è nella lista all'avvio (anche se qui sembra inizializzato correttamente)
+            try:
+                kw_index = [1,1.5,2,2.5,3,4.5,5,5.5,6].index(st.session_state.kw_main)
+            except ValueError:
+                kw_index = 4 # Default 3 kW
+                
+            kw = st.selectbox("Potenza impegnata (kW)", [1,1.5,2,2.5,3,4.5,5,5.5,6], index=kw_index, key="kw_main")
         smc = 0
         smc_annuo = 0
-    else:
+    else: # Tipo Gas
         with col_d1:
             smc = st.number_input("Consumo Gas (m³)", min_value=0.0, value=st.session_state.smc_main, key="smc_main")
         with col_d2:
@@ -368,7 +394,8 @@ else:
     cliente = st.session_state.cliente_main
     periodo = st.session_state.periodo_main
     mese1 = st.session_state.mese1_main
-    mese2 = st.session_state.get('mese2_main')
+    # Recupera mese2 solo se il periodo è Bimestrale e il valore esiste
+    mese2 = st.session_state.get('mese2_main') if periodo=="Bimestrale" else None
     
     kwh = st.session_state.get('kwh_main', 0.0) 
     kw = st.session_state.get('kw_main', 3)
@@ -388,8 +415,9 @@ else:
         if periodo=="Bimestrale" and mese2 is not None:
              mesi_list = [mese1, mese2]
         elif periodo=="Bimestrale" and mese2 is None:
-             # Questo dovrebbe essere gestito nel form, ma serve come fallback
-             raise ValueError("Seleziona il secondo mese per il periodo bimestrale.")
+             # Questo gestisce il caso in cui, nonostante il periodo sia Bimestrale, non ci sia un secondo mese
+             st.warning("Seleziona il secondo mese per il periodo bimestrale.")
+             st.stop() # Ferma l'esecuzione se i dati sono incompleti.
 
         mesi_idx = [MESI.index(m)+1 for m in mesi_list]
         num_mesi = len(mesi_idx)
@@ -406,6 +434,7 @@ else:
             prezzo_medio_calcolato = prezzo_medio
             
             materia = kwh * prezzo_medio
+            # Ho usato i valori standard per la luce (si può affinare la QUOTA DI TRASPORTO)
             sp_rete = kwh * 0.0445
             quota_pot = kw * QUOTA_POTENZA * num_mesi
             oneri = ONERI_SISTEMA * num_mesi
@@ -416,10 +445,10 @@ else:
             iva_luce = base_imponibile_luce * 0.10 
             
             dati_simulati = {
-                "Materia Energia": materia,
+                "Materia Energia (PUN+Spread+Disp.)": materia,
                 "Spese rete & Trasporto": sp_rete,
-                "Quota potenza": quota_pot,
-                "Oneri di sistema": oneri,
+                "Quota potenza (Fissa)": quota_pot,
+                "Oneri di sistema (Fissi/Variabili)": oneri,
                 "Commercializ. & Quota Fissa": comm_tot,
                 "Accise (Imposte)": accise_luce,
                 "IVA (10%)": iva_luce
@@ -432,8 +461,9 @@ else:
             
             materia = smc*(prezzo_medio_calcolato)
             sp_rete = QUOTA_VAR_DIST_GAS*smc + QUOTA_DIST_GAS * num_mesi
-            oneri = ONERI_SISTEMA_GAS*num_mesi + (0.07*smc)+(0.12*smc)
-            comm_tot = COMM*num_mesi
+            # Ho mantenuto la logica Oneri che include quote fisse e variabili come nel tuo codice
+            oneri = ONERI_SISTEMA_GAS*num_mesi + (0.07*smc)+(0.12*smc) 
+            comm_tot = COMM*num_mesi + QUOTA_FISSA_GAS * num_mesi # Ho incluso la quota fissa Gas
             
             accise_gas = accisa_annua_gas(smc_annuo)*smc
             aliquota = aliquota_iva_gas(smc_annuo)
@@ -441,7 +471,7 @@ else:
             iva_gas = base_imponibile_gas_tot * aliquota
             
             dati_simulati = {
-                "Materia Gas / PSV": materia,
+                "Materia Gas (PSV+Spread)": materia,
                 "Spese rete (Distribuz.)": sp_rete,
                 "Oneri di sistema": oneri,
                 "Commercializ. & Quota Fissa": comm_tot,
@@ -450,12 +480,16 @@ else:
             }
 
         # 2. CALCOLO TOTALE
-        totale_imposte_simulato = sum([v for k, v in dati_simulati.items() if "Imposte" in k or "IVA" in k])
-        costo_base_simulato = sum(dati_simulati.values()) - totale_imposte_simulato 
+        # Calcola la somma di tutte le voci che non sono bonus (che è uno sconto, non un costo)
+        # Il Bonus Sociale deve essere trattato come una detrazione al totale
+        totale_costi_lordi = sum(dati_simulati.values()) + ricalcoli + altre + canone_tv
+        totale_simulato = totale_costi_lordi - bonus
         
-        totale_extra = bonus + ricalcoli + altre + canone_tv
-        totale_simulato = sum(dati_simulati.values()) + totale_extra
-
+        # Breakdown per la metrica
+        totale_imposte_simulato = sum([v for k, v in dati_simulati.items() if "IVA" in k or "Accise" in k])
+        costo_base_simulato = totale_simulato - totale_imposte_simulato
+        
+        
         # 3. VISUALIZZAZIONE RISULTATI (Dashboard)
         st.header(f"2. Risultati Simulazione Offerta {offerta} ({num_mesi} Mesi)")
         st.markdown("---")
@@ -472,8 +506,9 @@ else:
         col_m2.metric(
             label="Costo Simulato Totale",
             value=format_currency(totale_simulato),
-            delta=f"Base Imponibile: {format_currency(costo_base_simulato)}",
-            delta_color="off"
+            # Ho aggiornato il delta per mostrare il risparmio/maggior costo rispetto all'attuale
+            delta=f"Differenza: {format_currency(risparmio_reale)}",
+            delta_color="inverse" if risparmio_reale < 0 else "normal"
         )
         col_m3.metric(
             label="Costo Fattura Attuale",
@@ -486,7 +521,8 @@ else:
         # --- GRAFICI E DETTAGLI ---
         st.markdown("## 📈 Andamento Prezzi all'Ingrosso")
         col_price1, col_price2 = st.columns([2, 1])
-
+        
+        # Visualizzazione PUN/PSV (grafico) 
         with col_price1:
             if tipo == "Luce":
                 fig_prices = create_price_chart(PUN, pun_medio_base, mesi_idx, 
@@ -499,6 +535,7 @@ else:
                                                 "PSV (€/Smc)")
                 st.plotly_chart(fig_prices, use_container_width=True)
                 
+        # Riepilogo Prezzi Base (metriche)
         with col_price2:
             st.markdown("#### Riepilogo Prezzi Base")
             if tipo == "Luce":
@@ -529,15 +566,25 @@ else:
         # Breakdown
         with col_g2:
             st.markdown(f"#### 🍩 Composizione del Costo Simulato ({offerta})")
-            voci_breakdown = [(k, v) for k, v in dati_simulati.items()]
-            if canone_tv > 0: voci_breakdown.append(("Canone TV", canone_tv))
-            if bonus > 0: voci_breakdown.append(("Bonus Sociale", bonus))
-            if ricalcoli > 0: voci_breakdown.append(("Ricalcoli", ricalcoli))
-            if altre > 0: voci_breakdown.append(("Altre Partite", altre))
-            df_breakdown = pd.DataFrame(voci_breakdown, columns=['Voce di Costo', 'Importo'])
-            df_breakdown['Importo'] = df_breakdown['Importo'].abs() 
-
-            fig_pie = px.pie(df_breakdown, values='Importo', names='Voce di Costo', hole=0.4, 
+            
+            # Prepara i dati per il grafico a torta, includendo Bonus come voce negativa
+            voci_breakdown = []
+            for k, v in dati_simulati.items():
+                 voci_breakdown.append({"Voce di Costo": k, "Importo": v})
+            
+            # Aggiungi voci extra
+            if canone_tv > 0: voci_breakdown.append({"Voce di Costo": "Canone TV", "Importo": canone_tv})
+            if ricalcoli > 0: voci_breakdown.append({"Voce di Costo": "Ricalcoli", "Importo": ricalcoli})
+            if altre > 0: voci_breakdown.append({"Voce di Costo": "Altre Partite", "Importo": altre})
+            if bonus > 0: voci_breakdown.append({"Voce di Costo": "Bonus Sociale (Sconto)", "Importo": -bonus}) # Il bonus è uno sconto
+            
+            df_breakdown = pd.DataFrame(voci_breakdown)
+            
+            # Per il grafico a torta, usiamo solo i costi effettivi, ignorando bonus/ricalcoli che distorcerebbero il breakdown
+            # Creiamo un DF filtrato per la visualizzazione corretta dei costi (solo voci positive)
+            df_costi = df_breakdown[df_breakdown['Importo'] >= 0]
+            
+            fig_pie = px.pie(df_costi, values='Importo', names='Voce di Costo', hole=0.4, 
                              color_discrete_sequence=px.colors.sequential.Teal)
             fig_pie.update_traces(textinfo='percent+label', marker=dict(line=dict(color='#000000', width=1)))
             fig_pie.update_layout(showlegend=False, uniformtext_minsize=12, uniformtext_mode='hide', margin=dict(t=30, b=0, l=0, r=0))
@@ -550,16 +597,21 @@ else:
             righe_tabella = []
             for voce, importo in dati_simulati.items():
                  righe_tabella.append({"Voce": voce, "Importo (€)": format_currency(importo)})
+            
+            # Aggiungi extra come righe separate (con segno corretto)
             if canone_tv > 0: righe_tabella.append({"Voce": "Canone TV", "Importo (€)": format_currency(canone_tv)})
-            if bonus > 0: righe_tabella.append({"Voce": "Bonus Sociale", "Importo (€)": format_currency(bonus)})
-            if ricalcoli > 0: righe_tabella.append({"Voce": "Ricalcoli", "Importo (€)": format_currency(ricalcoli)})
-            if altre > 0: righe_tabella.append({"Voce": "Altre Partite", "Importo (€)": format_currency(altre)})
+            if ricalcoli != 0: righe_tabella.append({"Voce": "Ricalcoli/Conguagli", "Importo (€)": format_currency(ricalcoli)})
+            if altre != 0: righe_tabella.append({"Voce": "Altre Partite", "Importo (€)": format_currency(altre)})
+            if bonus > 0: righe_tabella.append({"Voce": "**- BONUS SOCIALE (Sconto)**", "Importo (€)": format_currency(-bonus)})
+            
             df_tabella = pd.DataFrame(righe_tabella)
             st.table(df_tabella.set_index("Voce")) 
             st.markdown(f"**Totale Bolletta Stimata: {format_currency(totale_simulato)}**")
 
     except Exception as e:
-        st.error(f"⚠️ Errore nel calcolo. Controlla i dati inseriti: {e}")
+        # Aggiungo un fallback migliore per il debug
+        st.error("⚠️ Errore critico nel calcolo o nella visualizzazione.")
+        st.exception(e)
         
     st.markdown("---")
     
